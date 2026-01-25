@@ -1,18 +1,61 @@
-bonsai
-=============
+bonsai (BAGG Fork)
+==================
 
 Algorithm for automatically building pedigrees using IBD, Age, and Sex information.
 
+**This is a fork of [23andMe/bonsaitree](https://github.com/23andMe/bonsaitree) with modifications for the BAGG (Biomedical and Genealogical Genetics) analysis pipeline.**
 
-Installation and testing
-------------------------
+## Fork Modifications
+
+### 1. `return_all_pedigrees` Parameter (bonsai.py)
+The original `build_pedigree()` function only returns the first disconnected pedigree group, discarding others. This fork adds a `return_all_pedigrees=True` parameter that returns ALL disconnected pedigree groups as a dictionary.
+
+```python
+# Original behavior (default)
+result = bonsai.build_pedigree(..., return_all_pedigrees=False)
+# Returns: [(up_node_dict, log_likelihood), ...]
+
+# New behavior - get all disconnected groups
+result = bonsai.build_pedigree(..., return_all_pedigrees=True)
+# Returns: {group_idx: [(up_node_dict, log_likelihood), ...], ...}
+```
+
+### 2. Progress Logging (connections.py)
+Added progress logging to `combine_up_dicts()` to monitor the merge loop:
+- Logs initial pedigree count and IBD pairs to process
+- Logs progress every 10 steps or when ≤10 pedigrees remain
+- Logs final count of disconnected pedigree groups
+
+### 3. Packaging Fixes (setup.py, MANIFEST.in)
+- Fixed `packages` to use `find_packages()` (includes v3 subpackage)
+- Added `cython` to `install_requires` for pyximport
+- Added `cythonized/*.pyx` to `package_data`
+- Added `MANIFEST.in` for proper source distribution
+- Set `zip_safe=False` for pyximport compatibility
+- Removed `use_scm_version` (requires git tags)
+- Manual version: `3.0.0`
+
+---
+
+Installation
+------------
+
+### Via Poetry (recommended for BAGG pipeline)
+```bash
+poetry add git+https://github.com/lakishadavid/bonsaitree.git
+```
+
+### Via pip
+```bash
+pip install git+https://github.com/lakishadavid/bonsaitree.git
+```
+
+### Original method (make install)
 To install: in the bonsaitree directory containing the file Makefile, type
 ```
 make install
 ```
 at a command prompt. See the [Troubleshooting](#Troubleshooting) section below for common errors.
-
-
 
 To test: in the directory containing the file Makefile, type
 ```
