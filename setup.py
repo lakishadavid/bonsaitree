@@ -17,11 +17,14 @@ setup(
     long_description=README,
     long_description_content_type="text/markdown",
     packages=find_packages(exclude=['tests', 'tests.*']),
-    package_data={NAME: ["models/*.json"]},
+    package_data={NAME: [
+        "models/*.json",
+        "v3/cythonized/*.pyx",  # Include Cython source for pyximport
+    ]},
     include_package_data=True,
     url="https://github.com/lakishadavid/" + NAME,
-    zip_safe=True,
-    install_requires=["funcy", "numpy", "scipy", "six"],
+    zip_safe=False,  # Required for pyximport to find .pyx files
+    install_requires=["funcy", "numpy", "scipy", "six", "cython"],  # cython includes pyximport
     #ext_modules=[
     #    Extension("bonsaitree.copytools", sources=["bonsaitree/copytools.pyx"])
     #],
