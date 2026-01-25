@@ -3,7 +3,7 @@ bonsai (BAGG Fork)
 
 Algorithm for automatically building pedigrees using IBD, Age, and Sex information.
 
-**This is a fork of [23andMe/bonsaitree](https://github.com/23andMe/bonsaitree) with modifications for the BAGG (Biomedical and Genealogical Genetics) analysis pipeline.**
+**This is a fork of [23andMe/bonsaitree](https://github.com/23andMe/bonsaitree) with modifications for the BAGG (Beloved African Genetic Genealogy) Lab analysis pipeline.**
 
 ## Fork Modifications
 
