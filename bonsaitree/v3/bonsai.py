@@ -104,6 +104,7 @@ def build_pedigree(
     true_ped: Optional[dict[int, dict[int, int]]]=None,
     mean_bgd_num : float=MEAN_BGD_NUM,
     mean_bgd_len : float=MEAN_BGD_LEN,
+    return_all_pedigrees : bool = False,
 ):
     """
     Build a pedigree for a list of genotyped IDs.
@@ -144,12 +145,22 @@ def build_pedigree(
             pedigree.
         mean_bgd_num: float. Mean number of background segments.
         mean_bgd_len: float. Mean length of background segments.
+        return_all_pedigrees: bool. If True, return all disconnected pedigree groups
+            as a dict. If False (default), return only the first (largest) group's
+            pedigree list for backward compatibility.
 
     Returns:
-        up_dict_ll_list: List
-            List of the form [[up_node_dict, log_like], ...] where up_node_dict is an
-            inferred pedigree and log_like is the log likelihood of the pedigree.
-            Elements of up_dict_ll_list are sorted from most to least likely.
+        If return_all_pedigrees is False (default):
+            up_dict_ll_list: List
+                List of the form [[up_node_dict, log_like], ...] where up_node_dict is an
+                inferred pedigree and log_like is the log likelihood of the pedigree.
+                Elements of up_dict_ll_list are sorted from most to least likely.
+
+        If return_all_pedigrees is True:
+            result: Dict
+                Dict of the form {idx: [[up_node_dict, log_like], ...], ...} where each
+                key is a unique index for a disconnected pedigree group, and each value
+                is a list of pedigrees and their log likelihoods for that group.
     """  # noqa : E501
 
     # set up unphased IBD segments if none are provided
@@ -196,7 +207,11 @@ def build_pedigree(
         true_ped = true_ped,
     )
 
-    # get the index of the pedigree that was built
+    # return all disconnected pedigree groups if requested
+    if return_all_pedigrees:
+        return result
+
+    # get the index of the pedigree that was built (original behavior - first group only)
     idx = [*result][0]
 
     # get the list of pedigrees and their likelihoods

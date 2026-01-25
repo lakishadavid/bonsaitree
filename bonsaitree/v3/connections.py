@@ -1,4 +1,5 @@
 import copy
+from datetime import datetime, timezone, timedelta
 from itertools import (
     combinations,
     permutations,
@@ -8,6 +9,12 @@ from typing import Any, Optional
 
 import numpy as np
 import numpy.typing as npt
+
+
+def _cst_timestamp():
+    """Get current timestamp in CST (UTC-6)."""
+    cst = timezone(timedelta(hours=-6))
+    return datetime.now(cst).strftime("%I:%M:%S %p")
 
 from .constants import (
     DEG_DELTA,
@@ -1845,7 +1852,12 @@ def combine_up_dicts(  # noqa PLR0915
     id_to_idx = copy.deepcopy(id_to_idx)
     idx_to_id_set = copy.deepcopy(idx_to_id_set)
     step_ct = 0
+    initial_pedigree_count = len(idx_to_up_dict_ll_list)
+    print(f"[{_cst_timestamp()}] BonsaiTree: Starting merge of {initial_pedigree_count} pedigrees, {len(ibd_stats)} IBD pairs to process")
     while len(idx_to_up_dict_ll_list) > 1 and ibd_stats:
+        step_ct += 1
+        remaining = len(idx_to_up_dict_ll_list)
+        print(f"[{_cst_timestamp()}]   Merge step {step_ct}: {remaining} pedigrees remaining, {len(ibd_stats)} IBD pairs left")
         # get the closest pair of IDs that are not
         # already in the same pedigree
         c1,c2 = get_closest_pair(ibd_stats)
@@ -1992,6 +2004,16 @@ def combine_up_dicts(  # noqa PLR0915
             import pdb
             pdb.set_trace()
 
+    # Final summary
+    final_count = len(idx_to_up_dict_ll_list)
+    print(f"[{_cst_timestamp()}] BonsaiTree: Merge complete - {step_ct} steps, {final_count} disconnected pedigree group(s)")
+    if final_count > 1:
+        group_sizes = []
+        for idx, up_dct_ll_list in idx_to_up_dict_ll_list.items():
+            best_ped = up_dct_ll_list[0][0]
+            observed = len([n for n in best_ped.keys() if n > 0])
+            group_sizes.append(observed)
+        print(f"[{_cst_timestamp()}]   Group sizes (observed samples): {sorted(group_sizes, reverse=True)}")
 
     return idx_to_up_dict_ll_list
 
