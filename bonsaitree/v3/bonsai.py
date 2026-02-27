@@ -1,3 +1,4 @@
+import logging
 from typing import Optional
 
 from .connections import (
@@ -105,6 +106,7 @@ def build_pedigree(
     mean_bgd_num : float=MEAN_BGD_NUM,
     mean_bgd_len : float=MEAN_BGD_LEN,
     return_all_pedigrees : bool = False,
+    ibd_stats_output_dir : Optional[str] = None,
 ):
     """
     Build a pedigree for a list of genotyped IDs.
@@ -171,7 +173,10 @@ def build_pedigree(
     if phased_ibd_seg_list is None:
         phased_ibd_seg_list = get_unphased_to_phased(unphased_ibd_seg_list)
 
+    logger = logging.getLogger(__name__)
+
     # generate PwLog_like instance for computing pairwise likelihoods
+    logger.info(f"BonsaiTree: Initializing pairwise likelihood calculator for {len(bio_info)} samples...")
     pw_ll_cls = PwLogLike(
         bio_info=bio_info,
         unphased_ibd_seg_list=unphased_ibd_seg_list,
@@ -179,15 +184,31 @@ def build_pedigree(
         mean_bgd_num=mean_bgd_num,
         mean_bgd_len=mean_bgd_len,
     )
+    logger.info(f"BonsaiTree: PwLogLike initialized ({len(pw_ll_cls.ibd_stat_dict)} unique IBD pairs)")
+
+    if ibd_stats_output_dir:
+        import json as _json
+        import os as _os
+        _os.makedirs(ibd_stats_output_dir, exist_ok=True)
+        stats_file = _os.path.join(ibd_stats_output_dir, "ibd_stat_dict.json")
+        serializable = {
+            str(sorted(k)): v for k, v in pw_ll_cls.ibd_stat_dict.items()
+        }
+        with open(stats_file, 'w') as _f:
+            _json.dump(serializable, _f, indent=2)
+        logger.info(f"BonsaiTree: Wrote ibd_stat_dict ({len(serializable)} pairs) to {stats_file}")
 
     # initialize the input dictionaries
     idx_to_up_dict_ll_list, id_to_idx, idx_to_id_set = initialize_input_dicts(bio_info)
+    logger.info(f"BonsaiTree: Initialized {len(idx_to_up_dict_ll_list)} individual pedigrees")
 
     # TODO: we'll need to compute pairwise likelihoods based the ascertainment of each pair.
     # knowledge about ascertainment can be passed in bio_info and it can be determined in
     # the function that we'll write to determine who gets placed next. For now, assume that
     # all IBD sharing is conditional on observing some.
     condition = True
+
+    logger.info(f"BonsaiTree: Starting pedigree assembly (condition={condition}, connect_up_only={connect_up_only}, max_peds={max_peds})...")
 
     # build the pedigrees
     result = combine_up_dicts(
@@ -403,7 +424,7 @@ def get_new_node_connections(
     max_con_pts : int = MAX_CON_PTS,
     restrict_connection_points : bool = RESTRICT_CON_PTS,
     connect_up_only : bool = CONNECT_UP_ONLY,
-    condition : bool = False,
+    condition : bool = True,
     mean_bgd_num : float=MEAN_BGD_NUM,
     mean_bgd_len : float=MEAN_BGD_LEN,
 ):
