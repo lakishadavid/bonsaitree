@@ -827,6 +827,7 @@ class PwLogLike:
         mean_bgd_num : float=MEAN_BGD_NUM,
         mean_bgd_len : float=MEAN_BGD_LEN,
         min_seg_len : float=MIN_SEG_LEN,
+        likelihood_model : str = "default",
     ):
         """
         Initialize all the data structures we'll need
@@ -888,9 +889,15 @@ class PwLogLike:
         self.p = p
         self.c = c
         self.q = q
+        self.likelihood_model = likelihood_model
 
         # load the moments of the IBD distributions
         self.cond_dict, self.uncond_dict = load_ibd_moments(min_seg_len=min_seg_len)
+
+        # load Press-Hawkins parameters if using that model
+        if likelihood_model == 'ped_sim_press_hawkins':
+            from .imports import load_ph_params
+            self.ph_params = load_ph_params(min_seg_len=min_seg_len)
 
         # get the unphased IBD stats (num IBD1 segs, total IBD1, num IBD2 segs, total IBD2, etc...)
         self.ibd_stat_dict = get_ibd_stats_unphased(unphased_ibd_seg_list)
@@ -944,29 +951,66 @@ class PwLogLike:
         L1 = self.ibd_stat_dict[key]['total_half']
         L2 = self.ibd_stat_dict[key]['total_full']
 
-        # get the moments
-        moments = self.uncond_dict
+        if self.likelihood_model == 'ped_sim_press_hawkins' and hasattr(self, 'ph_params'):
+            # Press-Hawkins analytical per-pair likelihood
+            # Convert observed IBD to shared fraction
+            from .constants import GENOME_LENGTH
+            total_cm = L1 + L2
+            f = total_cm / GENOME_LENGTH
+            if f <= 0 or f >= 0.5:
+                log_pdf = -100.0  # near-zero likelihood for out-of-range fractions
+            else:
+                # Look up (alpha, k1, k2) for the candidate relationship
+                ph = self.ph_params.get_params_from_rel_tuple(rel_tuple)
+                if ph is not None:
+                    import math
+                    import sys
+                    # press_hawkins module is in scripts_work/
+                    if 'press_hawkins' not in sys.modules:
+                        import importlib.util
+                        import os
+                        ph_paths = [
+                            os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', '..', 'scripts_work', 'press_hawkins.py'),
+                            os.path.join(os.environ.get('PROJECT_WORKING_DIR', '/home/pipeline_main'), 'scripts_work', 'press_hawkins.py'),
+                        ]
+                        for ph_path in ph_paths:
+                            if os.path.exists(ph_path):
+                                spec = importlib.util.spec_from_file_location('press_hawkins', ph_path)
+                                ph_mod = importlib.util.module_from_spec(spec)
+                                sys.modules['press_hawkins'] = ph_mod
+                                spec.loader.exec_module(ph_mod)
+                                break
+                    from press_hawkins import _press_hawkins_log_pdf
+                    log_pdf = _press_hawkins_log_pdf(f, ph['k1'], ph['k2'], ph['alpha'])
+                    # Jacobian: transform from f-space to cM-space
+                    log_pdf -= math.log(GENOME_LENGTH)
+                else:
+                    # Relationship not in Press-Hawkins table — very low likelihood
+                    log_pdf = -100.0
+        else:
+            # Default: moment-based likelihood
+            moments = self.uncond_dict
 
-        # determine whether or not to condition on observing at least one segment
-        condition = key in self.condition_pair_set
+            # determine whether or not to condition on observing at least one segment
+            condition = key in self.condition_pair_set
 
-        # get the PDF
-        log_pdf = get_log_seg_pdf(
-            n1=n1,
-            n2=n2,
-            L1=L1,
-            L2=L2,
-            rel_tuple=rel_tuple,
-            cov1=cov1,
-            cov2=cov2,
-            min_seg_len=min_seg_len,
-            mean_num_bgd=mean_bgd_num,
-            mean_len_bgd=mean_bgd_len,
-            moments=moments,
-            p=p,
-            q=q,
-            condition=condition,
-        )
+            # get the PDF
+            log_pdf = get_log_seg_pdf(
+                n1=n1,
+                n2=n2,
+                L1=L1,
+                L2=L2,
+                rel_tuple=rel_tuple,
+                cov1=cov1,
+                cov2=cov2,
+                min_seg_len=min_seg_len,
+                mean_num_bgd=mean_bgd_num,
+                mean_len_bgd=mean_bgd_len,
+                moments=moments,
+                p=p,
+                q=q,
+                condition=condition,
+            )
 
         return log_pdf
 

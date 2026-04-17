@@ -107,6 +107,7 @@ def build_pedigree(
     mean_bgd_len : float=MEAN_BGD_LEN,
     return_all_pedigrees : bool = False,
     ibd_stats_output_dir : Optional[str] = None,
+    likelihood_model : str = "default",
 ):
     """
     Build a pedigree for a list of genotyped IDs.
@@ -183,6 +184,7 @@ def build_pedigree(
         condition_pair_set=condition_pair_set,
         mean_bgd_num=mean_bgd_num,
         mean_bgd_len=mean_bgd_len,
+        likelihood_model=likelihood_model,
     )
     logger.info(f"BonsaiTree: PwLogLike initialized ({len(pw_ll_cls.ibd_stat_dict)} unique IBD pairs)")
 
@@ -347,6 +349,7 @@ def connect_new_node_many_ways(
         condition_pair_set=condition_pair_set,
         mean_bgd_num=mean_bgd_num,
         mean_bgd_len=mean_bgd_len,
+        likelihood_model=likelihood_model,
     )
 
     # initialize the input dictionaries
@@ -508,6 +511,7 @@ def get_new_node_connections(
         condition_pair_set=condition_pair_set,
         mean_bgd_num=mean_bgd_num,
         mean_bgd_len=mean_bgd_len,
+        likelihood_model=likelihood_model,
     )
 
     # set up up_node_dicts to combine
